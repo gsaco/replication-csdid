@@ -21,6 +21,8 @@
 # %%
 """Code for Replication in Python.
 
+This code was elaborated by Gabriel Saco, Fernando Condori and Alexander Quispe.
+
 This script mirrors the R/Stata appendix in JEL-DiD using csdid.
 It generates tables, figures, and a self-contained HTML report.
 """
