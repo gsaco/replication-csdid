@@ -1,0 +1,7 @@
+Variable,(1),(2),(3),(4),(5),(6)
+Constant,"474.0<br><span class=""se"">(4.3)</span>","498.8<br><span class=""se"">(1.8)</span>","9.1<br><span class=""se"">(2.6)</span>","376.4<br><span class=""se"">(7.6)</span>","500.3<br><span class=""se"">(0.8)</span>","6.3<br><span class=""se"">(1.1)</span>"
+Medicaid Expansion,"-54.8<br><span class=""se"">(6.3)</span>",,"0.1<br><span class=""se"">(3.7)</span>","-53.7<br><span class=""se"">(11.5)</span>",,"-2.6<br><span class=""se"">(1.5)</span>"
+Post,"9.1<br><span class=""se"">(2.6)</span>",,,"6.3<br><span class=""se"">(1.1)</span>",,
+Medicaid Expansion x Post,"0.1<br><span class=""se"">(3.7)</span>","0.1<br><span class=""se"">(5.3)</span>","0.1<br><span class=""se"">(3.7)</span>","-2.6<br><span class=""se"">(1.5)</span>","-2.6<br><span class=""se"">(2.1)</span>","-2.6<br><span class=""se"">(1.5)</span>"
+County fixed effects,No,Yes,No,No,Yes,No
+Year fixed effects,No,Yes,No,No,Yes,No
