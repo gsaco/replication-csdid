@@ -25,7 +25,7 @@ from csdid import _version as csdid_version
 # Configuration
 # ----------------------------------------------------------------------------
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd().resolve()
 DATA_PATH = ROOT / "data" / "county_mortality_data.csv"
 TABLE_DIR = ROOT / "tables"
 FIG_DIR = ROOT / "figures"
@@ -137,10 +137,10 @@ def section_html(section_id: str, title: str, description: str, body_html: str, 
   <span class="tag">{tag}</span>
   <h2>{title}</h2>
   <p>{description}</p>
-  <div class="output">{body_html}</div>
   <div class="code-block">
     <pre><code>{code_html}</code></pre>
   </div>
+  <div class="output">{body_html}</div>
 </section>
 """
 
@@ -1261,14 +1261,46 @@ fig9_path = save_fig(fig9, "figure9_event_covs.png")
 # HTML report
 # ----------------------------------------------------------------------------
 
-source_text = Path(__file__).read_text(encoding="utf-8")
+def strip_helper_functions(code: str, names: set[str]) -> str:
+    lines = code.splitlines()
+    kept = []
+    skip = False
+    for line in lines:
+        if not skip:
+            if line.startswith("def "):
+                func_name = line.split("def ", 1)[1].split("(", 1)[0]
+                if func_name in names:
+                    skip = True
+                    continue
+            kept.append(line)
+        else:
+            if line.strip() == "":
+                skip = False
+                kept.append(line)
+    cleaned = "\n".join(kept).strip()
+    while "\n\n\n" in cleaned:
+        cleaned = cleaned.replace("\n\n\n", "\n\n")
+    return cleaned
 
-install_code = "# Install latest csdid-python\n# !pip install -U git+https://github.com/gsaco/csdid-python\n"
+
+script_path = Path(__file__).resolve() if "__file__" in globals() else ROOT / "python_replication.py"
+if not script_path.exists():
+    script_path = ROOT / "python_replication_jupytext.py"
+source_text = script_path.read_text(encoding="utf-8")
+
+install_code = (
+    "# Install latest csdid from GitHub\n"
+    "# !pip install -U git+https://github.com/d2cml-ai/csdid\n"
+)
 helpers_start = source_text.find("def weighted_mean")
 helpers_end = source_text.find("# ----------------------------------------------------------------------------\n# Load data", helpers_start)
 helpers_code = ""
 if helpers_start != -1 and helpers_end != -1:
     helpers_code = source_text[helpers_start:helpers_end].rstrip()
+    helpers_code = strip_helper_functions(
+        helpers_code,
+        {"df_to_html_table", "encode_fig", "extract_block", "section_html"},
+    )
 setup_code = f"{install_code}\n{helpers_code}".strip()
 
 code_blocks = {
@@ -1295,7 +1327,7 @@ sections = [
     {
         "id": "setup",
         "title": "Setup: Install Package and Helpers",
-        "description": "Install the latest csdid-python package and define helper utilities used below.",
+        "description": "Install the latest csdid package and define helper utilities used below.",
         "body": "",
         "code": code_blocks["setup"],
     },

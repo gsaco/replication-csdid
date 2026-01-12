@@ -13,6 +13,11 @@
 #     name: python3
 # ---
 
+# %% [markdown]
+# # Code for Replication in Python - csdid
+# This notebook mirrors the R/Stata appendix in JEL-DiD using csdid.
+# It generates tables, figures, and a self-contained HTML report.
+
 # %%
 """Code for Replication in Python.
 
@@ -36,13 +41,15 @@ from scipy.stats import norm
 from csdid.att_gt import ATTgt
 from csdid import _version as csdid_version
 
-# %%
-# ----------------------------------------------------------------------------
-# Configuration
-# %%
-# ----------------------------------------------------------------------------
+SHOW_OUTPUTS = "__file__" not in globals()
+if SHOW_OUTPUTS:
+    from IPython.display import display, HTML
 
-ROOT = Path(__file__).resolve().parent
+# %% [markdown]
+# ## Configuration
+
+# %%
+ROOT = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd().resolve()
 DATA_PATH = ROOT / "data" / "county_mortality_data.csv"
 TABLE_DIR = ROOT / "tables"
 FIG_DIR = ROOT / "figures"
@@ -68,12 +75,10 @@ FIG_DIR.mkdir(parents=True, exist_ok=True)
 if not DATA_PATH.exists():
     raise FileNotFoundError(f"Missing data file: {DATA_PATH}")
 
-# %%
-# ----------------------------------------------------------------------------
-# Helpers (minimal)
-# %%
-# ----------------------------------------------------------------------------
+# %% [markdown]
+# ## Helpers (minimal)
 
+# %%
 def weighted_mean(values: pd.Series, weights: pd.Series) -> float:
     values = np.asarray(values, dtype=float)
     weights = np.asarray(weights, dtype=float)
@@ -124,6 +129,11 @@ def df_to_html_table(df: pd.DataFrame) -> str:
     return df.to_html(index=False, escape=False, classes="data")
 
 
+def display_table(df: pd.DataFrame) -> None:
+    if SHOW_OUTPUTS:
+        display(HTML(df_to_html_table(df)))
+
+
 def save_fig(fig: plt.Figure, name: str) -> Path:
     path = FIG_DIR / name
     fig.savefig(path, dpi=180, bbox_inches="tight")
@@ -156,28 +166,25 @@ def section_html(section_id: str, title: str, description: str, body_html: str, 
   <span class="tag">{tag}</span>
   <h2>{title}</h2>
   <p>{description}</p>
-  <div class="output">{body_html}</div>
   <div class="code-block">
     <pre><code>{code_html}</code></pre>
   </div>
+  <div class="output">{body_html}</div>
 </section>
 """
 
-# %%
-# ----------------------------------------------------------------------------
-# Load data
-# %%
-# ----------------------------------------------------------------------------
+# %% [markdown]
+# ## Load data
 
+# %%
 df = pd.read_csv(DATA_PATH)
 df["state"] = df["county"].str[-2:]
 df["yaca"] = pd.to_numeric(df["yaca"], errors="coerce")
 
+# %% [markdown]
+# ## Table 1: Medicaid Expansion Adoption
+
 # %%
-# ----------------------------------------------------------------------------
-# Table 1: Medicaid Expansion Adoption
-# %%
-# ----------------------------------------------------------------------------
 # --- BEGIN TABLE 1
 
 table1_data = df.copy()
@@ -234,14 +241,15 @@ table1 = table1.rename(
 )
 
 table1.to_csv(TABLE_DIR / "table1_adoptions.csv", index=False)
+if SHOW_OUTPUTS:
+    display_table(table1)
 
 # --- END TABLE 1
 
+# %% [markdown]
+# ## Table 2: Simple 2x2 DiD
+
 # %%
-# ----------------------------------------------------------------------------
-# Table 2: Simple 2x2 DiD
-# %%
-# ----------------------------------------------------------------------------
 # --- BEGIN TABLE 2
 
 mydata = df.copy()
@@ -343,14 +351,15 @@ table2 = pd.DataFrame(
 )
 
 table2.to_csv(TABLE_DIR / "table2_simple_did.csv", index=False)
+if SHOW_OUTPUTS:
+    display_table(table2)
 
 # --- END TABLE 2
 
+# %% [markdown]
+# ## Table 3: Regression DiD
+
 # %%
-# ----------------------------------------------------------------------------
-# Table 3: Regression DiD
-# %%
-# ----------------------------------------------------------------------------
 # --- BEGIN TABLE 3
 
 short_outcome = short_data.pivot(index="county_code", columns="year", values="crude_rate_20_64")
@@ -407,14 +416,15 @@ table3 = pd.DataFrame(rows, columns=["Variable"] + model_labels)
 table3 = pd.concat([table3, pd.DataFrame(fe_rows, columns=table3.columns)], ignore_index=True)
 
 table3.to_csv(TABLE_DIR / "table3_regression_did.csv", index=False)
+if SHOW_OUTPUTS:
+    display_table(table3)
 
 # --- END TABLE 3
 
+# %% [markdown]
+# ## Table 4: Covariate Balance
+
 # %%
-# ----------------------------------------------------------------------------
-# Table 4: Covariate Balance
-# %%
-# ----------------------------------------------------------------------------
 # --- BEGIN TABLE 4
 
 cov_2013 = short_data[short_data["year"] == 2013][["county_code", "Treat", "set_wt"] + COVS].copy()
@@ -506,14 +516,15 @@ for col in table4.columns[1:]:
 table4 = table4.rename(columns={"variable": "Variable"})
 
 table4.to_csv(TABLE_DIR / "table4_covariate_balance.csv", index=False)
+if SHOW_OUTPUTS:
+    display_table(table4)
 
 # --- END TABLE 4
 
+# %% [markdown]
+# ## Table 5: Regression 2x2 DiD with Covariates
+
 # %%
-# ----------------------------------------------------------------------------
-# Table 5: Regression 2x2 DiD with Covariates
-# %%
-# ----------------------------------------------------------------------------
 # --- BEGIN TABLE 5
 
 reg_data_2013 = cov_2013.merge(short_outcome_diff.reset_index(), on="county_code", how="left")
@@ -551,14 +562,15 @@ for m in models5:
 table5 = pd.DataFrame([row5], columns=["Variable"] + labels5)
 
 table5.to_csv(TABLE_DIR / "table5_did_covariates.csv", index=False)
+if SHOW_OUTPUTS:
+    display_table(table5)
 
 # --- END TABLE 5
 
+# %% [markdown]
+# ## Table 6: Outcome Regression and Propensity Score Models
+
 # %%
-# ----------------------------------------------------------------------------
-# Table 6: Outcome Regression and Propensity Score Models
-# %%
-# ----------------------------------------------------------------------------
 # --- BEGIN TABLE 6
 
 outcome_unw = fit_ols("long_y ~ " + " + ".join(COVS), reg_data_2013[reg_data_2013["Treat"] == 0], cluster="county_code")
@@ -621,14 +633,15 @@ table6 = pd.DataFrame(
 )
 
 table6.to_csv(TABLE_DIR / "table6_pscore.csv", index=False)
+if SHOW_OUTPUTS:
+    display_table(table6)
 
 # --- END TABLE 6
 
+# %% [markdown]
+# ## Table 7: Callaway and Sant'Anna (2021) DiD
+
 # %%
-# ----------------------------------------------------------------------------
-# Table 7: Callaway and Sant'Anna (2021) DiD
-# %%
-# ----------------------------------------------------------------------------
 # --- BEGIN TABLE 7
 
 data_cs = short_data.copy()
@@ -717,14 +730,15 @@ table7 = pd.DataFrame(
 )
 
 table7.to_csv(TABLE_DIR / "table7_csdid.csv", index=False)
+if SHOW_OUTPUTS:
+    display_table(table7)
 
 # --- END TABLE 7
 
+# %% [markdown]
+# ## Figure 1: Distribution of Propensity Scores
+
 # %%
-# ----------------------------------------------------------------------------
-# Figure 1: Distribution of Propensity Scores
-# %%
-# ----------------------------------------------------------------------------
 # --- BEGIN FIGURE 1
 
 plot_base = short_data[short_data["year"] == 2013].copy()
@@ -756,15 +770,16 @@ axes[0].set_ylabel("Density")
 axes[0].legend(loc="lower center", bbox_to_anchor=(1.05, -0.35), ncol=2, frameon=False)
 fig1.tight_layout()
 
+if SHOW_OUTPUTS:
+    display(fig1)
 fig1_path = save_fig(fig1, "figure1_pscore.png")
 
 # --- END FIGURE 1
 
+# %% [markdown]
+# ## Figure 2: County Mortality Trends by Expansion Decision
+
 # %%
-# ----------------------------------------------------------------------------
-# Figure 2: County Mortality Trends by Expansion Decision
-# %%
-# ----------------------------------------------------------------------------
 # --- BEGIN FIGURE 2
 
 trend_rows = []
@@ -791,15 +806,16 @@ ax2.legend(loc="lower center", bbox_to_anchor=(0.5, -0.35), ncol=2, frameon=Fals
 ax2.grid(False)
 fig2.tight_layout()
 
+if SHOW_OUTPUTS:
+    display(fig2)
 fig2_path = save_fig(fig2, "figure2_trends.png")
 
 # --- END FIGURE 2
 
+# %% [markdown]
+# ## Figure 3: 2xT Event Study
+
 # %%
-# ----------------------------------------------------------------------------
-# Figure 3: 2xT Event Study
-# %%
-# ----------------------------------------------------------------------------
 # --- BEGIN FIGURE 3
 
 event_data = mydata.copy()
@@ -889,15 +905,16 @@ ax3.text(
 ax3.grid(False)
 fig3.tight_layout()
 
+if SHOW_OUTPUTS:
+    display(fig3)
 fig3_path = save_fig(fig3, "figure3_event_study.png")
 
 # --- END FIGURE 3
 
+# %% [markdown]
+# ## Figure 4: 2xT Event Study with Covariates
+
 # %%
-# ----------------------------------------------------------------------------
-# Figure 4: 2xT Event Study with Covariates
-# %%
-# ----------------------------------------------------------------------------
 # --- BEGIN FIGURE 4
 
 methods = [("reg", "Regression"), ("ipw", "IPW"), ("dr", "Doubly Robust")]
@@ -960,15 +977,16 @@ for ax4, (method, label) in zip(axes4, methods):
 axes4[0].set_ylabel("Treatment Effect\nMortality Per 100,000")
 fig4.tight_layout()
 
+if SHOW_OUTPUTS:
+    display(fig4)
 fig4_path = save_fig(fig4, "figure4_event_study_covariates.png")
 
 # --- END FIGURE 4
 
+# %% [markdown]
+# ## Figure 5: Mortality Trends by Expansion Timing
+
 # %%
-# ----------------------------------------------------------------------------
-# Figure 5: Mortality Trends by Expansion Timing
-# %%
-# ----------------------------------------------------------------------------
 # --- BEGIN FIGURE 5
 
 staggered = df.copy()
@@ -1044,15 +1062,16 @@ ax5.legend(loc="lower center", bbox_to_anchor=(0.5, -0.35), ncol=3, frameon=Fals
 ax5.grid(False)
 fig5.tight_layout()
 
+if SHOW_OUTPUTS:
+    display(fig5)
 fig5_path = save_fig(fig5, "figure5_staggered_trends.png")
 
 # --- END FIGURE 5
 
+# %% [markdown]
+# ## Figure 6: ATT(g,t) by Calendar Time
+
 # %%
-# ----------------------------------------------------------------------------
-# Figure 6: ATT(g,t) by Calendar Time
-# %%
-# ----------------------------------------------------------------------------
 # --- BEGIN FIGURE 6
 
 staggered["county_code"] = staggered["county_code"].astype(int)
@@ -1104,15 +1123,16 @@ for ax6 in axes6[2:]:
 
 fig6.tight_layout()
 
+if SHOW_OUTPUTS:
+    display(fig6)
 fig6_path = save_fig(fig6, "figure6_attgt_calendar.png")
 
 # --- END FIGURE 6
 
+# %% [markdown]
+# ## Figure 7: ATT(g,t) in Event Time
+
 # %%
-# ----------------------------------------------------------------------------
-# Figure 7: ATT(g,t) in Event Time
-# %%
-# ----------------------------------------------------------------------------
 # --- BEGIN FIGURE 7
 
 att_df["event_time"] = att_df["time"] - att_df["group"]
@@ -1137,15 +1157,16 @@ ax7.legend(loc="lower center", bbox_to_anchor=(0.5, -0.35), ncol=4, frameon=Fals
 ax7.grid(False)
 fig7.tight_layout()
 
+if SHOW_OUTPUTS:
+    display(fig7)
 fig7_path = save_fig(fig7, "figure7_attgt_event.png")
 
 # --- END FIGURE 7
 
+# %% [markdown]
+# ## Figure 8: Event Study Without Covariates (GxT)
+
 # %%
-# ----------------------------------------------------------------------------
-# Figure 8: Event Study Without Covariates (GxT)
-# %%
-# ----------------------------------------------------------------------------
 # --- BEGIN FIGURE 8
 
 try:
@@ -1212,15 +1233,16 @@ ax8.text(
 ax8.grid(False)
 fig8.tight_layout()
 
+if SHOW_OUTPUTS:
+    display(fig8)
 fig8_path = save_fig(fig8, "figure8_event_no_covs.png")
 
 # --- END FIGURE 8
 
+# %% [markdown]
+# ## Figure 9: Event Study With Covariates (GxT)
+
 # %%
-# ----------------------------------------------------------------------------
-# Figure 9: Event Study With Covariates (GxT)
-# %%
-# ----------------------------------------------------------------------------
 # --- BEGIN FIGURE 9
 
 # csdid: ATTgt estimates ATT(g,t) with covariates and not-yet-treated controls.
@@ -1306,24 +1328,56 @@ ax9.text(
 ax9.grid(False)
 fig9.tight_layout()
 
+if SHOW_OUTPUTS:
+    display(fig9)
 fig9_path = save_fig(fig9, "figure9_event_covs.png")
 
 # --- END FIGURE 9
 
-# %%
-# ----------------------------------------------------------------------------
-# HTML report
-# %%
-# ----------------------------------------------------------------------------
+# %% [markdown]
+# ## HTML report
 
-source_text = Path(__file__).read_text(encoding="utf-8")
+# %%
+def strip_helper_functions(code: str, names: set[str]) -> str:
+    lines = code.splitlines()
+    kept = []
+    skip = False
+    for line in lines:
+        if not skip:
+            if line.startswith("def "):
+                func_name = line.split("def ", 1)[1].split("(", 1)[0]
+                if func_name in names:
+                    skip = True
+                    continue
+            kept.append(line)
+        else:
+            if line.strip() == "":
+                skip = False
+                kept.append(line)
+    cleaned = "\n".join(kept).strip()
+    while "\n\n\n" in cleaned:
+        cleaned = cleaned.replace("\n\n\n", "\n\n")
+    return cleaned
 
-install_code = "# Install latest csdid-python\n# !pip install -U git+https://github.com/gsaco/csdid-python\n"
+
+script_path = Path(__file__).resolve() if "__file__" in globals() else ROOT / "python_replication_jupytext.py"
+if not script_path.exists():
+    script_path = ROOT / "python_replication.py"
+source_text = script_path.read_text(encoding="utf-8")
+
+install_code = (
+    "# Install latest csdid from GitHub\n"
+    "# !pip install -U git+https://github.com/d2cml-ai/csdid\n"
+)
 helpers_start = source_text.find("def weighted_mean")
-helpers_end = source_text.find("# ----------------------------------------------------------------------------\n# Load data", helpers_start)
+helpers_end = source_text.find("# %% [markdown]\n# ## Load data", helpers_start)
 helpers_code = ""
 if helpers_start != -1 and helpers_end != -1:
     helpers_code = source_text[helpers_start:helpers_end].rstrip()
+    helpers_code = strip_helper_functions(
+        helpers_code,
+        {"df_to_html_table", "encode_fig", "extract_block", "section_html"},
+    )
 setup_code = f"{install_code}\n{helpers_code}".strip()
 
 code_blocks = {
@@ -1350,7 +1404,7 @@ sections = [
     {
         "id": "setup",
         "title": "Setup: Install Package and Helpers",
-        "description": "Install the latest csdid-python package and define helper utilities used below.",
+        "description": "Install the latest csdid package and define helper utilities used below.",
         "body": "",
         "code": code_blocks["setup"],
     },
